@@ -20,12 +20,17 @@ def distance_matrix(coords):
     return 6367 * c
 
 
-def recalc_routecalc(routecalc: List[str]) -> List[str]:
+def recalc_routecalc(routecalc: List[str], arbitrary_endpoints: bool = False) -> List[str]:
     # convert '12.345,67.890' to (12.345, 67.890)
     coords = [tuple(map(float, row.split(','))) for row in routecalc]
+    num_coords = len(coords)
+
+    if arbitrary_endpoints:
+        # we need an additional fake point with distance==0 to all others
+        num_coords += 1
 
     # Create the routing index manager.
-    manager = pywrapcp.RoutingIndexManager(len(coords), 1, 0)
+    manager = pywrapcp.RoutingIndexManager(num_coords, 1, num_coords - 1 if arbitrary_endpoints else 0)
     # Create Routing Model.
     routing = pywrapcp.RoutingModel(manager)
 
@@ -35,6 +40,10 @@ def recalc_routecalc(routecalc: List[str]) -> List[str]:
 
     def distance_callback(from_index, to_index):
         if from_index == to_index:
+            # distance of a point to itself is 0
+            return 0
+        if arbitrary_endpoints and (from_index == num_coords - 1 or to_index == num_coords - 1):
+            # distance to fake point is always 0, fake point is always last in list
             return 0
         return int(1000000 * distances[from_index][to_index])
 
@@ -56,6 +65,9 @@ def recalc_routecalc(routecalc: List[str]) -> List[str]:
 
     new_routecalc = []
     index = routing.Start(0)
+    # skip fake point
+    if arbitrary_endpoints:
+        index = solution.Value(routing.NextVar(index))
     while not routing.IsEnd(index):
         new_routecalc.append(routecalc[manager.IndexToNode(index)])
         index = solution.Value(routing.NextVar(index))
@@ -77,10 +89,11 @@ if __name__ == '__main__':
         # get old routecalc
         area = utility.mad_api.get_area(area_id)
         routecalc_id = int(area['routecalc'].split('/')[-1])
+        mode = area['mode']
         old_route = utility.mad_api.get_routecalc_routefile(routecalc_id)
         print(f"Recalculating route for area {area['name']} ({i + 1}/{len(area_ids)})")
         # calculate new route
-        new_route = recalc_routecalc(old_route)
+        new_route = recalc_routecalc(old_route, mode == 'pokestops')
         # set new route
         utility.mad_api.set_routecalc_routefile(routecalc_id, new_route)
     # apply settings if desired
