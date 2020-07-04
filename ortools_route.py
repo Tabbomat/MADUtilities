@@ -1,10 +1,23 @@
 from typing import List
 
-import geopy.distance
+import numpy as np
 from ortools.constraint_solver import pywrapcp
 from ortools.constraint_solver import routing_enums_pb2
 
 import utility.mad_api
+
+
+def distance_matrix(coords):
+    # see https://stackoverflow.com/a/29546836
+    lat, lng = map(np.radians, zip(*coords))
+    # calculate differences, essentially x.T - x
+    dlat = lat[..., np.newaxis] - lat
+    dlng = lng[..., np.newaxis] - lng
+    # haversine
+    cos_lat = np.cos(lat)
+    a = np.sin(dlat / 2.0) ** 2 + np.multiply(np.outer(cos_lat, cos_lat), np.sin(dlng / 2.0) ** 2)
+    c = 2 * np.arcsin(np.sqrt(a))
+    return 6367 * c
 
 
 def recalc_routecalc(routecalc: List[str]) -> List[str]:
@@ -17,14 +30,13 @@ def recalc_routecalc(routecalc: List[str]) -> List[str]:
     routing = pywrapcp.RoutingModel(manager)
 
     # calculating distances, since distance matrix is symmetric, only calculate half
-    distances = [[int(1000 * geopy.distance.distance(from_coords, coords[to_index]).meters) for to_index in range(from_index)] for from_index, from_coords in enumerate(coords)]
+    # distances = [[int(1000 * geopy.distance.distance(from_coords, coords[to_index]).meters) for to_index in range(from_index)] for from_index, from_coords in enumerate(coords)]
+    distances = distance_matrix(coords)
 
     def distance_callback(from_index, to_index):
         if from_index == to_index:
             return 0
-        if from_index < to_index:
-            from_index, to_index = to_index, from_index
-        return distances[from_index][to_index]
+        return int(1000000 * distances[from_index][to_index])
 
     transit_callback_index = routing.RegisterTransitCallback(distance_callback)
 
