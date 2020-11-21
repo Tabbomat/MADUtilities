@@ -4,7 +4,7 @@ import requests
 
 import utility.args
 
-MAD_URL = utility.args.parse_args().madmin_url
+MAD_URL = utility.args.parse_args().madmin_url.rstrip('/')
 
 
 def apply_settings():
