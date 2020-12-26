@@ -25,3 +25,11 @@ def get_routecalc_routefile(routecalc_id: int) -> List[str]:
 
 def set_routecalc_routefile(routecalc_id: int, routefile: List[str]):
     requests.patch(f'{MAD_URL}/api/routecalc/{routecalc_id}', json={'routefile': routefile})
+
+
+def mad_recalc_area(area_id: int):
+    requests.post(f'{MAD_URL}/api/area/{area_id}', json={"call": "recalculate"}, headers={'Content-Type': 'application/json-rpc'})
+
+
+def get_recalc_status() -> List[int]:
+    return requests.get(f'{MAD_URL}/recalc_status').json()

@@ -1,3 +1,4 @@
+import time
 from typing import List
 
 import numpy as np
@@ -35,7 +36,6 @@ def recalc_routecalc(routecalc: List[str], arbitrary_endpoints: bool = False) ->
     routing = pywrapcp.RoutingModel(manager)
 
     # calculating distances, since distance matrix is symmetric, only calculate half
-    # distances = [[int(1000 * geopy.distance.distance(from_coords, coords[to_index]).meters) for to_index in range(from_index)] for from_index, from_coords in enumerate(coords)]
     distances = distance_matrix(coords)
 
     def distance_callback(from_index, to_index):
@@ -75,6 +75,9 @@ def recalc_routecalc(routecalc: List[str], arbitrary_endpoints: bool = False) ->
 
 
 if __name__ == '__main__':
+    # TODO: POST {"call":"recalculate"} to /api/area/{id] to recalc area (include new stops, ...)
+    # TODO: GET /recalc_status yields a list [id_1, id_2, id_2] of areas whose routes are still recalculating
+    # TODO: ask user if they want to first recalc using MAD. recalc them. wait. If an area finished recalculating, open a separate thread which or_recalcs the route
     # fetch areas
     areas = utility.mad_api.get_areas()
     for area_id, area_name in areas.items():
@@ -85,14 +88,32 @@ if __name__ == '__main__':
         area_ids = [int(area_id[area_id.rfind('/') + 1:]) for area_id in areas.keys()]
     else:
         area_ids = list(map(int, areas_to_recalc.split(',')))
+    do_mad_recalc = input("Do you want to trigger a MAD recalc before using or tools to calculate the routes? y / [n] ").strip().lower() == 'y'
     for i, area_id in enumerate(area_ids):
-        # get old routecalc
         area = utility.mad_api.get_area(area_id)
+        print(f"Recalculating route for area {area['name']} ({i + 1}/{len(area_ids)})")
+        if do_mad_recalc:
+            print(f"Using MAD to recalculate route")
+            utility.mad_api.mad_recalc_area(area_id)
+            areas_in_recalculation = utility.mad_api.get_recalc_status()
+            if area_id not in areas_in_recalculation:
+                # either recalculation was incredibly quick, or it hasn't been queued yet
+                for _ in range(5):
+                    time.sleep(1)
+                    areas_in_recalculation = utility.mad_api.get_recalc_status()
+                    if area_id in areas_in_recalculation:
+                        break
+                # at this point, area_id should be in areas_in_recalculation. if it is not, then the area was super quickly recalculated and we just wasted 5 seconds
+            while area_id in areas_in_recalculation:
+                time.sleep(1)
+                areas_in_recalculation = utility.mad_api.get_recalc_status()
+        # get old routecalc
         routecalc_id = int(area['routecalc'].split('/')[-1])
         mode = area['mode']
         old_route = utility.mad_api.get_routecalc_routefile(routecalc_id)
-        print(f"Recalculating route for area {area['name']} ({i + 1}/{len(area_ids)})")
         # calculate new route
+        if not do_mad_recalc:
+            print("Using ortools to recalculate route")
         new_route = recalc_routecalc(old_route, mode == 'pokestops')
         # set new route
         utility.mad_api.set_routecalc_routefile(routecalc_id, new_route)
