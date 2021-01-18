@@ -88,7 +88,7 @@ if __name__ == '__main__':
         area_ids = [int(area_id[area_id.rfind('/') + 1:]) for area_id in areas.keys()]
     else:
         area_ids = list(map(int, areas_to_recalc.split(',')))
-    do_mad_recalc = input("Do you want to trigger a MAD recalc before using or tools to calculate the routes? y / [n] ").strip().lower() == 'y'
+    do_mad_recalc = input("Do you want to trigger a MAD recalc before using or tools to calculate the routes? (Y/n) ").strip().lower() != 'n'
     for i, area_id in enumerate(area_ids):
         area = utility.mad_api.get_area(area_id)
         print(f"Recalculating route for area {area['name']} ({i + 1}/{len(area_ids)})")
@@ -111,6 +111,10 @@ if __name__ == '__main__':
         routecalc_id = int(area['routecalc'].split('/')[-1])
         mode = area['mode']
         old_route = utility.mad_api.get_routecalc_routefile(routecalc_id)
+        # check if area has a route (otherwise we can't and don't need to recalculate)
+        if not old_route:
+            print("Area has no route.")
+            continue
         # calculate new route
         if not do_mad_recalc:
             print("Using ortools to recalculate route")
@@ -118,6 +122,5 @@ if __name__ == '__main__':
         # set new route
         utility.mad_api.set_routecalc_routefile(routecalc_id, new_route)
     # apply settings if desired
-    apply_settings = input("Do you want to apply the changes and reload? (y/N)  ").strip().lower()
-    if apply_settings == 'y':
+    if input("Do you want to apply the changes and reload? (y/N)  ").strip().lower() == 'y':
         utility.mad_api.apply_settings()
