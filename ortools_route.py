@@ -88,7 +88,7 @@ if __name__ == '__main__':
         area_ids = [int(area_id[area_id.rfind('/') + 1:]) for area_id in areas.keys()]
     else:
         area_ids = list(map(int, areas_to_recalc.split(',')))
-    do_mad_recalc = input("Do you want to trigger a MAD recalc before using or tools to calculate the routes? (Y/n) ").strip().lower() != 'n'
+    do_mad_recalc = input("Do you want to trigger a MAD recalc before using ortools to calculate the routes? (Y/n) ").strip().lower() != 'n'
     for i, area_id in enumerate(area_ids):
         area = utility.mad_api.get_area(area_id)
         print(f"Recalculating route for area {area['name']} ({i + 1}/{len(area_ids)})")
