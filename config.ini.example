@@ -1,2 +1,4 @@
 [MAD]
 madmin_url = http://serverip:port
+#madmin_user=exampleuser
+#madmin_password=examplepassword1234
