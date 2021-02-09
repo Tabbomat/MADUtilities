@@ -1,11 +1,10 @@
-import time
-from typing import List
+from typing import List, Tuple
 
 import numpy as np
 from ortools.constraint_solver import pywrapcp
 from ortools.constraint_solver import routing_enums_pb2
 
-import utility.mad_api as mad_api
+import utility.mad_api
 
 
 def distance_matrix(coords):
@@ -21,10 +20,8 @@ def distance_matrix(coords):
     return 6367 * c
 
 
-def recalc_routecalc(routecalc: List[str], arbitrary_endpoints: bool = False) -> List[str]:
-    # convert '12.345,67.890' to (12.345, 67.890)
-    coords = [tuple(map(float, row.split(','))) for row in routecalc]
-    num_coords = len(coords)
+def recalc_routecalc(routecalc: List[Tuple[float, float]], arbitrary_endpoints: bool = False) -> List[Tuple[float, float]]:
+    num_coords = len(routecalc)
 
     if arbitrary_endpoints:
         # we need an additional fake point with distance==0 to all others
@@ -36,7 +33,7 @@ def recalc_routecalc(routecalc: List[str], arbitrary_endpoints: bool = False) ->
     routing = pywrapcp.RoutingModel(manager)
 
     # calculating distances, since distance matrix is symmetric, only calculate half
-    distances = distance_matrix(coords)
+    distances = distance_matrix(routecalc)
 
     def distance_callback(from_index, to_index):
         if from_index == to_index:
@@ -75,42 +72,25 @@ def recalc_routecalc(routecalc: List[str], arbitrary_endpoints: bool = False) ->
 
 
 if __name__ == '__main__':
-    # TODO: POST {"call":"recalculate"} to /api/area/{id] to recalc area (include new stops, ...)
-    # TODO: GET /recalc_status yields a list [id_1, id_2, id_2] of areas whose routes are still recalculating
-    # TODO: ask user if they want to first recalc using MAD. recalc them. wait. If an area finished recalculating, open a separate thread which or_recalcs the route
+    api = utility.mad_api.Api()
     # fetch areas
-    areas = mad_api.get_areas()
-    for area_id, area_name in areas.items():
-        print(f'{area_id[area_id.rfind("/") + 1:]:>4}: {area_name}')
+    for area in api.areas.values():
+        print(f'{area.id}: {area.name}')
     areas_to_recalc = input("Please input area ids of areas you want to recalculate separated by comma, or 'all' to recalc all areas:\n")
     # check if we want to recalc all areas or only specific ones
     if areas_to_recalc.lower().strip(' \t\r\n\'"') == 'all':
-        area_ids = mad_api.get_area_ids()
+        area_ids = sorted(api.areas.keys())
     else:
         area_ids = list(map(int, areas_to_recalc.split(',')))
     do_mad_recalc = input("Do you want to trigger a MAD recalc before using ortools to calculate the routes? (Y/n) ").strip().lower() != 'n'
     for i, area_id in enumerate(area_ids):
-        area = mad_api.get_area(area_id)
-        print(f"Recalculating route for area {area['name']} ({i + 1}/{len(area_ids)})")
+        area = api.areas[area_id]
+        print(f"Recalculating route for area {area.name} ({i + 1}/{len(area_ids)})")
         if do_mad_recalc:
             print(f"Using MAD to recalculate route")
-            mad_api.mad_recalc_area(area_id)
-            areas_in_recalculation = mad_api.get_recalc_status()
-            if area_id not in areas_in_recalculation:
-                # either recalculation was incredibly quick, or it hasn't been queued yet
-                for _ in range(5):
-                    time.sleep(1)
-                    areas_in_recalculation = mad_api.get_recalc_status()
-                    if area_id in areas_in_recalculation:
-                        break
-                # at this point, area_id should be in areas_in_recalculation. if it is not, then the area was super quickly recalculated and we just wasted 5 seconds
-            while area_id in areas_in_recalculation:
-                time.sleep(1)
-                areas_in_recalculation = mad_api.get_recalc_status()
+            area.recalculate()
         # get old routecalc
-        routecalc_id = int(area['routecalc'].split('/')[-1])
-        mode = area['mode']
-        old_route = mad_api.get_routecalc_routefile(routecalc_id)
+        old_route = area.routecalc
         # check if area has a route (otherwise we can't and don't need to recalculate)
         if not old_route:
             print("Area has no route.")
@@ -118,9 +98,8 @@ if __name__ == '__main__':
         # calculate new route
         if not do_mad_recalc:
             print("Using ortools to recalculate route")
-        new_route = recalc_routecalc(old_route, mode == 'pokestops')
-        # set new route
-        mad_api.set_routecalc_routefile(routecalc_id, new_route)
+        # calculate and set new route
+        area.routecalc = recalc_routecalc(old_route, area.mode == 'pokestops')
     # apply settings if desired
     if input("Do you want to apply the changes and reload? (y/N)  ").strip().lower() == 'y':
-        mad_api.apply_settings()
+        api.apply_settings()
