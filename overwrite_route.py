@@ -2,6 +2,7 @@ import os
 import re
 
 import utility.mad_api
+import utility.utility
 from ortools_route import recalc_routecalc
 
 if __name__ == '__main__':
@@ -10,10 +11,7 @@ if __name__ == '__main__':
     route_txt = input("path to route file: ").strip()
     while not (route_txt and os.path.isfile(route_txt)):
         route_txt = input("path is invalid, please try again: ").strip()
-    # print area overview
-    for area in api.areas.values():
-        print(f'{area.id:>4}: {area.name}')
-    area_id = int(input("Please input area id of area you want to overwrite: "))
+    area_id = utility.utility.query_area_ids(api, "Please input area id of area you want to overwrite: ")[0]
     area = api.areas[area_id]
     # parse route file
     with open(route_txt) as input_file:

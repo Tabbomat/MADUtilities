@@ -5,10 +5,6 @@ import requests
 
 import utility.args
 
-ARGS = utility.args.parse_args()
-MAD_URL = ARGS['madmin_url']
-MAD_AUTH = (ARGS['madmin_user'], ARGS['madmin_password']) if ARGS['madmin_user'] else None
-
 
 class MadObj:
     def __init__(self, api, obj_id: int):
@@ -143,8 +139,9 @@ class Area(MadObj):
 
 class Api:
     def __init__(self):
-        self._mad_url: str = MAD_URL
-        self._mad_auth = MAD_AUTH
+        args = utility.args.parse_args()
+        self._mad_url: str = args['madmin_url']
+        self._mad_auth = (args['madmin_user'], args['madmin_password']) if args['madmin_user'] else None
         self._areas = {}
 
     def _update_areas(self):

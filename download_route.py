@@ -4,17 +4,11 @@ from datetime import datetime
 import gpxpy.gpx
 
 import utility.mad_api
+import utility.utility
 
 if __name__ == '__main__':
     api = utility.mad_api.Api()
-    # fetch areas
-    for area in api.areas.values():
-        print(f'{area.id}: {area.name}')
-    areas_to_download = input("Please input area ids of areas you want to download separated by comma, or 'all' to download all areas:\n")
-    if areas_to_download.lower().strip(' \t\r\n\'"') == 'all':
-        area_ids = sorted(api.areas.keys())
-    else:
-        area_ids = list(map(int, areas_to_download.split(',')))
+    area_ids = utility.utility.query_area_ids(api, "Please input area ids of areas you want to download separated by comma, or 'all' to download all areas:\n")
     if not os.path.exists('download'):
         os.makedirs('download')
     for i, area_id in enumerate(area_ids):

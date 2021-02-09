@@ -5,6 +5,7 @@ from ortools.constraint_solver import pywrapcp
 from ortools.constraint_solver import routing_enums_pb2
 
 import utility.mad_api
+import utility.utility
 
 
 def distance_matrix(coords):
@@ -73,15 +74,7 @@ def recalc_routecalc(routecalc: List[Tuple[float, float]], arbitrary_endpoints: 
 
 if __name__ == '__main__':
     api = utility.mad_api.Api()
-    # fetch areas
-    for area in api.areas.values():
-        print(f'{area.id}: {area.name}')
-    areas_to_recalc = input("Please input area ids of areas you want to recalculate separated by comma, or 'all' to recalc all areas:\n")
-    # check if we want to recalc all areas or only specific ones
-    if areas_to_recalc.lower().strip(' \t\r\n\'"') == 'all':
-        area_ids = sorted(api.areas.keys())
-    else:
-        area_ids = list(map(int, areas_to_recalc.split(',')))
+    area_ids = utility.utility.query_area_ids(api, "Please input area ids of areas you want to recalculate separated by comma, or 'all' to recalc all areas:\n")
     do_mad_recalc = input("Do you want to trigger a MAD recalc before using ortools to calculate the routes? (Y/n) ").strip().lower() != 'n'
     for i, area_id in enumerate(area_ids):
         area = api.areas[area_id]
