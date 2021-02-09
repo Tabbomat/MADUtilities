@@ -35,3 +35,12 @@ def mad_recalc_area(area_id: int):
 
 def get_recalc_status() -> List[int]:
     return requests.get(f'{MAD_URL}/recalc_status', auth=MAD_AUTH).json()
+
+
+def get_geofence(geofence_id: int) -> dict:
+    return requests.get(f'{MAD_URL}/api/geofence/{geofence_id}', auth=MAD_AUTH).json()
+
+
+def get_spawnpoints(area_id: int, index: int = 0, event_id: int = 1) -> List[dict]:
+    # result is list of dicts like {"id":123456,"lastnonscan":"2020-12-15 18:43:37","lastscan":"1970-01-01 00:00:00","lat":12.345,"lon":56.789}
+    return requests.get(f'{MAD_URL}/get_spawn_details', params={'area_id': area_id, 'event_id': event_id, 'mode': 'ALL', 'index': index}, auth=MAD_AUTH).json()
