@@ -22,6 +22,9 @@ def distance_matrix(coords):
 
 
 def recalc_routecalc(routecalc: List[Tuple[float, float]], arbitrary_endpoints: bool = False) -> List[Tuple[float, float]]:
+    if not routecalc:
+        return []
+
     num_coords = len(routecalc)
 
     if arbitrary_endpoints:
