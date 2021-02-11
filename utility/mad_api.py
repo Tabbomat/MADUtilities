@@ -143,6 +143,11 @@ class Api:
         self._mad_url: str = args['madmin_url']
         self._mad_auth = (args['madmin_user'], args['madmin_password']) if args['madmin_user'] else None
         self._areas = {}
+        try:
+            if requests.get(self._mad_url + '/settings/areas', auth=self._mad_auth).status_code != 200:
+                raise ValueError("Error trying to access MAD Api. Please check your config.")
+        except requests.exceptions.ConnectionError:
+            raise ValueError("Could not reach MAD. Please check your config, especially madmin_url")
 
     def _update_areas(self):
         areas = self.get_json('/api/area')['results']
