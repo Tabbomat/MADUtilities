@@ -40,13 +40,15 @@ def recalc_routecalc(routecalc: List[Tuple[float, float]], arbitrary_endpoints: 
     distances = distance_matrix(routecalc)
 
     def distance_callback(from_index, to_index):
-        if from_index == to_index:
+        from_node, to_node = manager.IndexToNode(from_index), manager.IndexToNode(to_index)
+        if from_node == to_node:
             # distance of a point to itself is 0
             return 0
-        if arbitrary_endpoints and (from_index == num_coords - 1 or to_index == num_coords - 1):
+        m = max(from_node, to_node)
+        if (arbitrary_endpoints and m == num_coords - 1) or m >= len(distances):
             # distance to fake point is always 0, fake point is always last in list
             return 0
-        return int(1000000 * distances[from_index][to_index])
+        return int(1000000 * distances[from_node][to_node])
 
     transit_callback_index = routing.RegisterTransitCallback(distance_callback)
 
